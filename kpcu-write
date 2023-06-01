@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+#
+# kpcu-write - wrapper around kwriteconfig5
+
+POSITIONAL_ARGS=()
+KEY_GROUPS=()
+
+while [ $# -gt 0 ]; do
+    case $1 in
+        -f|--file)
+            FILE=$2
+            shift 2
+            ;;
+        -d|--delete)
+            DELETE=1
+            shift
+            ;;
+        -t|--type)
+            TYPE=$2
+            shift 2
+            ;;
+        -h|--help)
+            HELP=1
+            shift
+            ;;
+        -g|--group|/)
+            KEY_GROUPS+=( '--group' "$2" )
+            shift 2
+            ;;
+        -*)
+            echo "Unknown option $1"
+            exit 1
+            ;;
+        *)
+            # save positional arg
+            POSITIONAL_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# restore positional parameters
+set -- "${POSITIONAL_ARGS[@]}"
+
+if [[ -n "$HELP" ]] || [[ "$#" -lt 2 ]]; then
+    cat <<EOF
+Usage: $0 [<arguments...>] <key> <value>
+
+Arguments:
+    -f/--file       Path to file to write to (defaults to global)
+    -d/--delete     Delete the key instead of writing a value (value is ignored but required)
+    -t/--type       Type to write the value as (read 'kwriteconfig5' help page)
+    -h/--help       Shows this message
+    -g/--group      Group the key is contained in, can be chained (alias: /)
+
+Examples:
+    # set panel thickness
+    \$ $0 -f ~/.config/plasmashellrc / PlasmaViews / 'Panel 2' / 'Defaults' thickness 32
+
+    # open by single click instead of double click
+    \$ $0 -f ~/.config/kdeglobals / KDE -t bool SingleClick false
+
+EOF
+
+    exit 0
+fi
+
+ARGS=()
+
+if [[ "${#KEY_GROUPS[@]}" -gt 0 ]]; then
+    ARGS+=( "${KEY_GROUPS[@]}" )
+fi
+
+if [[ -n "$FILE" ]]; then
+    ARGS+=( '--file' "$FILE" )
+fi
+
+if [[ -n "$DELETE" ]]; then
+    ARGS+=( '--delete' )
+fi
+
+if [[ -n "$TYPE" ]]; then
+    ARGS+=( '--type' "$TYPE" )
+fi
+
+kwriteconfig5 "${ARGS[@]}" --key "$1" "$2"
+
